@@ -2,7 +2,7 @@
 // @name         Autoz Signup Automation Helper
 // @author        XettriAleen
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.6
 // @description  Assists with form filling for signups, including dynamic form detection and email checking, with React compatibility
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
@@ -202,124 +202,145 @@
 
   // Function to generate random data
   function generateRandomData() {
-    const firstNames = ["John", "Jane", "Alex", "Emma", "Michael", "Olivia"];
-    const lastNames = [
-      "Smith",
-      "Johnson",
-      "Williams",
-      "Brown",
-      "Jones",
-      "Garcia",
-    ];
-    const name = `${
-      firstNames[Math.floor(Math.random() * firstNames.length)]
-    } ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-    const dob = new Date(
-      Math.floor(Math.random() * (new Date().getFullYear() - 1950) + 1950),
-      Math.floor(Math.random() * 12),
-      Math.floor(Math.random() * 28) + 1
-    )
-      .toISOString()
-      .split("T")[0];
-    const password =
-      Math.random().toString(36).slice(-10) +
-      Math.random().toString(36).toUpperCase().slice(-2) +
-      Math.floor(Math.random() * 10) +
-      "!";
+    const firstNames = ['John', 'Jane', 'Alex', 'Emma', 'Michael', 'Olivia'];
+    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia'];
+    const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+    const dob = new Date(Math.floor(Math.random() * (new Date().getFullYear() - 1950) + 1950), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0];
+    const password = Math.random().toString(36).slice(-10) + Math.random().toString(36).toUpperCase().slice(-2) + Math.floor(Math.random() * 10) + '!';
     return { name, dob, password };
-  }
-
-  // Enhanced function to fill form fields
-
-async function fillFormFields(container = document.body) {
-    const { name, dob, password } = generateRandomData();
-    const fieldMap = {
-        email: [/mail/i, /e-mail/i, /login/i],
-        password: [/pass/i, /pwd/i],
-        name: [/name/i, /full.?name/i],
-        firstName: [/first.?name/i, /given.?name/i],
-        lastName: [/last.?name/i, /surname/i, /family.?name/i],
-        dob: [/birth/i, /dob/i, /date/i]
-    };
-
-    const inputs = container.querySelectorAll('input, select, [contenteditable="true"]');
-    for (const input of inputs) {
-        const inputId = (input.id || '').toLowerCase();
-        const inputName = (input.name || '').toLowerCase();
-        const inputType = input.type ? input.type.toLowerCase() : '';
-        const placeholder = (input.placeholder || '').toLowerCase();
-
-        for (const [field, patterns] of Object.entries(fieldMap)) {
-            if (patterns.some(pattern => pattern.test(inputId) || pattern.test(inputName) || pattern.test(placeholder))) {
-                let value;
-                switch(field) {
-                    case 'email': value = tempEmail; break;
-                    case 'password': value = password; break;
-                    case 'name': value = name; break;
-                    case 'firstName': value = name.split(' ')[0]; break;
-                    case 'lastName': value = name.split(' ')[1]; break;
-                    case 'dob': value = dob; break;
-                }
-                await setInputValue(input, value);
-                break;
-            }
-        }
-
-        // Handle specific input types
-        if (inputType === 'checkbox' || inputType === 'radio') {
-            input.checked = true;
-            await triggerEvent(input, 'change');
-        } else if (input.tagName.toLowerCase() === 'select' && input.options.length > 1) {
-            input.selectedIndex = Math.floor(Math.random() * (input.options.length - 1)) + 1;
-            await triggerEvent(input, 'change');
-        }
-
-        // Add a small delay between filling each field
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
-
-    // Trigger form-level events
-    const form = container.closest('form');
-    if (form) {
-        await triggerEvent(form, 'change');
-        await triggerEvent(form, 'input');
-    }
 }
 
-async function setInputValue(input, value) {
-    const prevValue = input.value;
+
+
+
+    // Function to fill form fields
+    async function fillFormFields(container = document.body) {
+        const { name, dob, password } = generateRandomData();
+        const fieldMap = {
+            email: [/mail/i, /e-mail/i, /login/i],
+            password: [/pass/i, /pwd/i],
+            name: [/name/i, /full.?name/i],
+            firstName: [/first.?name/i, /given.?name/i],
+            lastName: [/last.?name/i, /surname/i, /family.?name/i],
+            dob: [/birth/i, /dob/i, /date/i]
+        };
+
+        const inputs = container.querySelectorAll('input, select, textarea, [contenteditable="true"]');
+        for (const input of inputs) {
+            const inputId = (input.id || '').toLowerCase();
+            const inputName = (input.name || '').toLowerCase();
+            const inputType = input.type ? input.type.toLowerCase() : '';
+            const placeholder = (input.placeholder || '').toLowerCase();
+
+            for (const [field, patterns] of Object.entries(fieldMap)) {
+                if (patterns.some(pattern => pattern.test(inputId) || pattern.test(inputName) || pattern.test(placeholder))) {
+                    let value;
+                    switch(field) {
+                        case 'email': value = tempEmail; break;
+                        case 'password': value = password; break;
+                        case 'name': value = name; break;
+                        case 'firstName': value = name.split(' ')[0]; break;
+                        case 'lastName': value = name.split(' ')[1]; break;
+                        case 'dob': value = dob; break;
+                    }
+                    await setInputValue(input, value);
+                    break;
+                }
+            }
+
+            // Handle specific input types not covered by the fieldMap
+            if (inputType === 'checkbox' || inputType === 'radio') {
+                input.checked = true;
+                await triggerEvent(input, 'change');
+            } else if (input instanceof HTMLSelectElement && input.options.length > 1) {
+                const randomIndex = Math.floor(Math.random() * (input.options.length - 1)) + 1;
+                await setInputValue(input, input.options[randomIndex].value);
+            }
+
+            // Add a small delay between filling each field
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // Trigger form-level events
+        const form = container.closest('form');
+        if (form) {
+            await triggerEvent(form, 'change');
+            await triggerEvent(form, 'input');
+        }
+    }
+
+
+   // Enhanced function to set input value
+   async function setInputValue(input, value) {
+    console.log(`Attempting to set value for element:`, input);
+    console.log(`Value to be set:`, value);
+
+    const inputType = input.type ? input.type.toLowerCase() : 'text';
+
+    // Method 1: Direct assignment
     input.value = value;
 
-    if (input.value !== prevValue) {
-        await triggerEvent(input, 'focus');
-        await triggerEvent(input, 'keydown');
-        await triggerEvent(input, 'keypress');
-        await triggerEvent(input, 'input');
-        await triggerEvent(input, 'keyup');
-        await triggerEvent(input, 'change');
-        await triggerEvent(input, 'blur');
+    // Method 2: Using Object.defineProperty
+    Object.defineProperty(input, 'value', {
+        value: value,
+        writable: true
+    });
 
-        // For React-style controlled inputs
+    // Method 3: Using Object.getOwnPropertyDescriptor
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    if (descriptor && descriptor.set) {
+        descriptor.set.call(input, value);
+    }
+
+    // Method 4: Simulate user input
+    input.focus();
+    input.select();
+    document.execCommand('insertText', false, value);
+
+    // Method 5: Using keyboard events
+    value.split('').forEach(char => {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: char }));
+        input.dispatchEvent(new KeyboardEvent('keypress', { key: char }));
+        input.value += char;
+        input.dispatchEvent(new KeyboardEvent('keyup', { key: char }));
         input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-    }
+    });
 
-    if (input.getAttribute('contenteditable') === 'true') {
-        input.textContent = value;
-        await triggerEvent(input, 'input');
-    }
+    // Method 6: Using InputEvent
+    const inputEvent = new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: value
+    });
+    input.dispatchEvent(inputEvent);
+
+    // Trigger common events
+    ['focus', 'input', 'change', 'blur'].forEach(eventType => {
+        const event = new Event(eventType, { bubbles: true, cancelable: true, composed: true });
+        input.dispatchEvent(event);
+    });
+
+    // For React-style controlled inputs
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
 
     // Store the value as a data attribute
     input.dataset.autoFilledValue = value;
+
+    console.log(`Value set. Current value:`, input.value);
+
+    // Add a small delay to allow for any asynchronous updates
+    await new Promise(resolve => setTimeout(resolve, 100));
 }
 
-
-async function triggerEvent(element, eventType) {
-    const event = new Event(eventType, { bubbles: true, cancelable: true });
-    element.dispatchEvent(event);
-    // Adds a small delay after each event
-    await new Promise(resolve => setTimeout(resolve, 10));
-}
+// Helper function to trigger events    
+    async function triggerEvent(element, eventType) {
+        const event = new Event(eventType, { bubbles: true, cancelable: true, composed: true });
+        element.dispatchEvent(event);
+        // Add a small delay after each event
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
 
   // Function to add UI buttons
   function addButtons() {
@@ -366,37 +387,35 @@ async function triggerEvent(element, eventType) {
     return button;
   }
 
-  // Function to detect and fill new forms
-  function detectAndFillNewForms() {
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === "childList") {
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              fillFormFields(node);
-            }
-          });
-        } else if (mutation.type === "attributes") {
-          if (
-            mutation.target.tagName === "INPUT" ||
-            mutation.target.tagName === "SELECT"
-          ) {
-            const input = mutation.target;
-            if (input.dataset.autoFilledValue && !input.value) {
-              setInputValue(input, input.dataset.autoFilledValue);
-            }
-          }
-        }
-      });
-    });
+  // Function to detect and fill new forms   
+    function detectAndFillNewForms() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            fillFormFields(node);
+                        }
+                    });
+                } else if (mutation.type === 'attributes') {
+                    if (mutation.target.tagName === 'INPUT' || mutation.target.tagName === 'SELECT') {
+                        const input = mutation.target;
+                        if (input.dataset.autoFilledValue && !input.value) {
+                            setInputValue(input, input.dataset.autoFilledValue);
+                        }
+                    }
+                }
+            });
+        });
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["value", "checked"],
-    });
-  }
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['value', 'checked']
+        });
+    }
+
 
   // Main function
   async function main() {
@@ -410,7 +429,7 @@ async function triggerEvent(element, eventType) {
 
         // Periodically re-fill forms
         setInterval(async () => {
-            const inputs = document.querySelectorAll('input, select, [contenteditable="true"]');
+            const inputs = document.querySelectorAll('input, select, textarea, [contenteditable="true"]');
             for (const input of inputs) {
                 if (input.dataset.autoFilledValue && !input.value) {
                     await setInputValue(input, input.dataset.autoFilledValue);
@@ -421,6 +440,7 @@ async function triggerEvent(element, eventType) {
         console.error('Error:', error);
     }
 }
+
 
   // Add the buttons when the script loads
   if (!document.getElementById("auto-signup-buttons")) {
